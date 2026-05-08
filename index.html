@@ -388,11 +388,52 @@
             if (!localAnswers[mId] || !localAnswers[mId].data) return showAlert("알림", "미션 내용을 입력하거나 사진을 찍어주세요!");
             
             // 전송 로직 (GAS 연동 시 fetch 사용)
-            localAnswers[mId].submitted = true;
-            localStorage.setItem("gbg_mission_answers", JSON.stringify(localAnswers));
-            buildSidebar();
-            loadMission(currentIdx);
-            showAlert("성공", "미션이 전송되었습니다!");
+function submitCurrentMission() {
+    const mId = missions[currentIdx].id;
+    const currentMission = missions[currentIdx];
+    
+    // 1. 전송할 데이터 꾸러미 만들기
+    const payload = {
+        class: document.getElementById("class-select").value,
+        team: document.getElementById("team-select").value,
+        missionId: mId,
+        missionTitle: currentMission.title,
+        answer: localAnswers[mId].data // 사진(Base64) 또는 텍스트 내용
+    };
+
+    // 버튼을 '전송 중' 상태로 변경 (중복 클릭 방지)
+    const btn = document.getElementById("submit-btn");
+    const originalText = btn.innerText;
+    btn.innerText = "데이터 전송 중... 잠시만 기다려주세요!";
+    btn.disabled = true;
+
+    // 2. 실제 구글(GAS)로 데이터 보내기
+    fetch(GAS_URL, {
+        method: "POST",
+        mode: "no-cors", // CORS 문제 방지를 위한 설정
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+    })
+    .then(() => {
+        // 3. 전송 성공 시 처리
+        localAnswers[mId].submitted = true;
+        localStorage.setItem("gbg_mission_answers", JSON.stringify(localAnswers));
+        
+        buildSidebar();
+        loadMission(currentIdx);
+        showAlert("성공", "미션이 스프레드시트에 안전하게 기록되었습니다! ✅");
+    })
+    .catch(err => {
+        // 4. 전송 실패 시 처리
+        console.error(err);
+        showAlert("오류", "전송에 실패했습니다. 인터넷 연결을 확인하거나 다시 시도해주세요.");
+    })
+    .finally(() => {
+        // 버튼 상태 복구
+        btn.innerText = originalText;
+        btn.disabled = false;
+    });
+}
         }
 
         function showMap() { document.getElementById("map-modal").style.display = "flex"; }
