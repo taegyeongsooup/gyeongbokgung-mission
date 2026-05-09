@@ -309,20 +309,46 @@
             }
         }
 
-        function previewImage(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                const preview = document.getElementById("image-preview");
-                preview.src = e.target.result;
-                preview.style.display = "block";
-                document.getElementById("placeholder-text").style.display = "none";
-                localAnswers[missions[currentIdx].id] = { data: e.target.result, submitted: false };
-                localStorage.setItem("gbg_mission_answers", JSON.stringify(localAnswers));
-            };
-            reader.readAsDataURL(file);
-        }
+// 기존 previewImage 함수를 지우고 아래 코드로 교체하세요!
+function previewImage(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = function() {
+            // 캔버스를 이용해 사진 크기 대폭 압축 (최대 800px)
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+            const max_size = 800;
+
+            if (width > height) {
+                if (width > max_size) { height *= max_size / width; width = max_size; }
+            } else {
+                if (height > max_size) { width *= max_size / height; height = max_size; }
+            }
+            canvas.width = width;
+            canvas.height = height;
+            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+            
+            // 압축된 데이터를 생성 (품질 70%)
+            const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+            
+            const preview = document.getElementById("image-preview");
+            preview.src = compressedDataUrl;
+            preview.style.display = "block";
+            document.getElementById("placeholder-text").style.display = "none";
+            
+            // 원본 대신 "압축된 사진"을 저장!
+            localAnswers[missions[currentIdx].id] = { data: compressedDataUrl, submitted: false };
+            localStorage.setItem("gbg_mission_answers", JSON.stringify(localAnswers));
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
 
         function saveText(val) {
             localAnswers[missions[currentIdx].id] = { data: val, submitted: false };
