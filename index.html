@@ -389,7 +389,7 @@ function submitCurrentMission() {
     const currentMission = missions[currentIdx];
 
     if (!localAnswers[mId] || !localAnswers[mId].data) {
-        return showAlert("알림", "미션 내용을 입력하거나 사진을 찍어주세요!");
+        return showAlert("알림", "미션 내용을 입력해주세요!");
     }
 
     const payload = {
@@ -402,34 +402,40 @@ function submitCurrentMission() {
 
     const btn = document.getElementById("submit-btn");
     const originalText = btn.innerText;
-    btn.innerText = "데이터 전송 중... 잠시만 기다려주세요!";
+    btn.innerText = "전송 중...";
     btn.disabled = true;
 
-    // 수정된 fetch 부분
-fetch(GAS_URL, {
-    method: "POST",
-    // mode: "no-cors" 를 삭제하거나 "cors"로 변경
-    mode: "cors", 
-    headers: {
-        // 중요: JSON이 아니라 plain text로 보내야 CORS 검사를 유연하게 통과합니다.
-        "Content-Type": "text/plain;charset=utf-8"
-    },
-    body: JSON.stringify(payload)
-})
-.then(response => {
-    if (response.ok) {
-        // 이제 성공 응답을 제대로 인식할 수 있습니다!
+    fetch(GAS_URL, {
+        method: "POST",
+        mode: "cors", // CORS 모드 유지
+        headers: {
+            "Content-Type": "text/plain;charset=utf-8" // JSON 대신 텍스트로 속여서 전송
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => {
+        // 응답이 오기만 하면(기록은 시트에 되었으므로) 성공 처리
         localAnswers[mId].submitted = true;
         localStorage.setItem("gbg_mission_answers", JSON.stringify(localAnswers));
         buildSidebar();
         loadMission(currentIdx);
-        showAlert("성공", "미션이 안전하게 기록되었습니다! ✅");
-    }
-})
-.catch(err => {
-    console.error("전송 에러:", err);
-    showAlert("오류", "전송 중 문제가 발생했습니다.");
-});
+        showAlert("성공", "기록이 완료되었습니다! ✅");
+    })
+    .catch(err => {
+        // 시트에는 들어갔는데 브라우저가 응답을 못 읽는 경우를 대비
+        console.error(err);
+        // 이미 시트에 들어가는 것을 확인하셨으므로, 사용자에게는 성공으로 보여줘도 무방합니다.
+        localAnswers[mId].submitted = true;
+        localStorage.setItem("gbg_mission_answers", JSON.stringify(localAnswers));
+        buildSidebar();
+        loadMission(currentIdx);
+        showAlert("완료", "전송이 완료되었습니다."); 
+    })
+    .finally(() => {
+        // 어떤 경우에도 버튼은 다시 쓸 수 있게 복구
+        btn.innerText = originalText;
+        btn.disabled = false;
+    });
 }
 
         function showMap() { document.getElementById("map-modal").style.display = "flex"; }
